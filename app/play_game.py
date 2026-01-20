@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 import os
 import random
+import time
 
 # Get the absolute path to the project root
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -26,6 +27,8 @@ round_active = False
 user_move = ''
 computer_move = ''
 winner = ''
+timer_start = 0
+timer_duration = 3
 
 while True:
     # Read a frame from the webcam
@@ -45,34 +48,45 @@ while True:
 
     if key == ord('q'):
         break
-    elif key == ord(' '):
+    elif key == ord(' ') and not round_active:
         round_active = True
+        timer_start = time.time()
+        winner = ''
+        user_move = ''
+        computer_move = ''
+
 
     if round_active:
-        # Preprocess the ROI
-        img = cv2.resize(roi, (img_width, img_height))
-        img = np.expand_dims(img, axis=0)
-        img = img / 255.
+        remaining_time = timer_duration - (time.time() - timer_start)
+        if remaining_time <= 0:
+            # Preprocess the ROI
+            img = cv2.resize(roi, (img_width, img_height))
+            img = np.expand_dims(img, axis=0)
+            img = img / 255.
 
-        # Make a prediction
-        prediction = model.predict(img)
-        user_move_index = np.argmax(prediction)
-        user_move = labels[user_move_index]
+            # Make a prediction
+            prediction = model.predict(img)
+            user_move_index = np.argmax(prediction)
+            user_move = labels[user_move_index]
 
-        # Get the computer's move
-        computer_move = random.choice(labels)
+            # Get the computer's move
+            computer_move = random.choice(labels)
 
-        # Determine the winner
-        if user_move == computer_move:
-            winner = 'Tie'
-        elif (user_move == 'rock' and computer_move == 'scissors') or \
-             (user_move == 'scissors' and computer_move == 'paper') or \
-             (user_move == 'paper' and computer_move == 'rock'):
-            winner = 'You win!'
+            # Determine the winner
+            if user_move == computer_move:
+                winner = 'Tie'
+            elif (user_move == 'rock' and computer_move == 'scissors') or \
+                 (user_move == 'scissors' and computer_move == 'paper') or \
+                 (user_move == 'paper' and computer_move == 'rock'):
+                winner = 'You win!'
+            else:
+                winner = 'Computer wins!'
+            
+            round_active = False
         else:
-            winner = 'Computer wins!'
-        
-        round_active = False
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            cv2.putText(frame, f'Time: {int(remaining_time) + 1}', (50, 140), font, 1, (255, 0, 0), 2, cv2.LINE_AA)
+
 
     # Display the result
     font = cv2.FONT_HERSHEY_SIMPLEX
@@ -91,4 +105,3 @@ while True:
 # Release the webcam and destroy all windows
 cap.release()
 cv2.destroyAllWindows()
-
